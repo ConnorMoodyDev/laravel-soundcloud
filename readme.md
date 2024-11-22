@@ -36,13 +36,15 @@ Next, you must migrate config :
     php artisan vendor:publish --provider="Noweh\SoundcloudApi\SoundcloudServiceProvider"
 
 ⚠️ `{CALLBACK_URL}` must be identical to the one indicated in your SoundCloud account.
+⚠️ `{SOUNDCLOUD_CODE_VERIFIER}` must be a random string of 43 to 128 characters: (https://blog.postman.com/what-is-pkce/)
 
 ## Usage
 
 ⚠️ Since [July 2021](https://developers.soundcloud.com/blog/security-updates-api), most calls to SoundCloud REST API requires an `access_token`.
+⚠️ Since October 2024, SoundCloud will require all API calls to be authenticated with an `code_verifier`.
 
 You have to redirect the user to the SoundCloud login page:
-```
+```php
 return redirect(\Soundcloud::getAuthorizeUrl('a_custom_param_to_retrieve_in_callback'));
 ```
 

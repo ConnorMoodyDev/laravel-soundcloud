@@ -15,7 +15,7 @@ class Soundcloud
      *
      * @access private
      */
-    private $_clientId;
+    private string $_clientId;
 
     /**
      * OAuth client secret
@@ -24,7 +24,7 @@ class Soundcloud
      *
      * @access private
      */
-    private $_clientSecret;
+    private string $_clientSecret;
 
     /**
      * OAuth redirect URI
@@ -33,16 +33,16 @@ class Soundcloud
      *
      * @access private
      */
-    private $_redirectUri;
+    private string $_redirectUri;
 
     /**
      * Access code
      *
-     * @var boolean
+     * @var string
      *
      * @access private
      */
-    private $_code;
+    private string $_code = '';
 
     /**
      * Access token returned by the service provider after a successful authentication
@@ -51,7 +51,25 @@ class Soundcloud
      *
      * @access private
      */
-    private $_accessToken;
+    private string $_accessToken = '';
+
+    /**
+     * Code verifier
+     *
+     * @var string
+     *
+     * @access private
+     */
+    private string $_codeVerifier;
+
+    /**
+     * Code challenge
+     *
+     * @var string
+     *
+     * @access private
+     */
+    private string $_codeChallenge;
 
     /**
      * Class constructor.
@@ -69,6 +87,16 @@ class Soundcloud
         $this->_clientId = Config::get('soundcloud.client_id');
         $this->_clientSecret = Config::get('soundcloud.client_secret');
         $this->_redirectUri = Config::get('soundcloud.callback_url');
+
+        // Generate code verifier and challenge
+        $this->_codeVerifier = Config::get('soundcloud.code_verifier');
+        $this->_codeChallenge = $this->generateCodeChallenge($this->_codeVerifier);
+    }
+
+    private function generateCodeChallenge(string $codeVerifier): string
+    {
+        $hash = hash('sha256', $codeVerifier, true);
+        return rtrim(strtr(base64_encode($hash), '+/', '-_'), '=');
     }
 
     /**
@@ -84,10 +112,12 @@ class Soundcloud
             'client_id' => $this->_clientId,
             'redirect_uri' => $this->_redirectUri,
             'response_type' => 'code',
+            'code_challenge' => $this->_codeChallenge,
+            'code_challenge_method' => 'S256',
             'state' => $state
         ];
 
-        return $this->buildUrl('connect', $params);
+        return $this->buildUrl('authorize', $params, true);
     }
 
     /**
@@ -128,7 +158,7 @@ class Soundcloud
         $url = $this->buildUrl($path);
         $options = [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $postData
+            CURLOPT_POSTFIELDS => http_build_query($postData),
         ];
         $options = array_replace($options, $curlOptions);
 
@@ -263,13 +293,14 @@ class Soundcloud
             }
 
             $soundCloudResponse = $this->post(
-                $this->buildUrl('oauth2/token'),
+                $this->buildUrl('oauth/token', [], true),
                 [
                     'grant_type' => 'authorization_code',
                     'client_id' => $this->_clientId,
                     'client_secret' => $this->_clientSecret,
-                    'code' => $this->_code,
                     'redirect_uri' => $this->_redirectUri,
+                    'code_verifier' => $this->_codeVerifier,
+                    'code' => $this->_code,
                 ],
                 [],
                 false
@@ -288,12 +319,13 @@ class Soundcloud
      *
      * @param string  $path           Relative or absolute URI
      * @param array   $params         Optional query string parameters
+     * @param bool    $secureMode     Optional secure mode
      *
      * @return string $url
      *
      * @access protected
      */
-    protected function buildUrl(string $path, array $params = []): string
+    protected function buildUrl(string $path, array $params = [], bool $secureMode = false): string
     {
         if (preg_match('/^https?\:\/\//', $path)) {
             $url = $path;
@@ -302,7 +334,12 @@ class Soundcloud
                 $path = substr($path, 1);
             }
 
-            $url = 'https://api.soundcloud.com/';
+            if ($secureMode) {
+                $url = 'https://secure.soundcloud.com/';
+            } else {
+                $url = 'https://api.soundcloud.com/';
+            }
+
             $url .= $path;
         }
 
@@ -327,18 +364,20 @@ class Soundcloud
     protected function performRequest(string $url, array $curlOptions = [], $needAccessToken = true)
     {
         $ch = curl_init($url);
-        $options = array_replace([CURLOPT_RETURNTRANSFER => true], $curlOptions);
 
-        $options[CURLOPT_HTTPHEADER] = [];
-        $options[CURLOPT_HTTPHEADER][] = array_key_exists(CURLOPT_POSTFIELDS, $options)
-            ? 'Content-Type: multipart/form-data' : 'Content-Type: application/json';
-        $options[CURLOPT_HTTPHEADER][] = 'Accept: application/json';
-
-        if ($needAccessToken) {
-            $options[CURLOPT_HTTPHEADER][] = 'Authorization: OAuth ' . $this->getAccessToken();
+        if (!isset($curlOptions[CURLOPT_HTTPHEADER])) {
+            $curlOptions[CURLOPT_HTTPHEADER] = [];
         }
 
-        curl_setopt_array($ch, $options);
+        $curlOptions[CURLOPT_HTTPHEADER][] = 'Content-Type: application/x-www-form-urlencoded';
+        $curlOptions[CURLOPT_HTTPHEADER][] = 'Accept: application/json';
+        $curlOptions[CURLOPT_RETURNTRANSFER] = true;
+
+        if ($needAccessToken) {
+            $curlOptions[CURLOPT_HTTPHEADER][] = 'Authorization: OAuth ' . $this->getAccessToken();
+        }
+
+        curl_setopt_array($ch, $curlOptions);
 
         $data = curl_exec($ch);
         $info = curl_getinfo($ch);

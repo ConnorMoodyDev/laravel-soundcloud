@@ -5,4 +5,5 @@ return [
     'account_id'     => env('SOUNDCLOUD_ACCOUNT_ID'),
     'client_secret' => env('SOUNDCLOUD_SECRET'),
     'callback_url'  => env('SOUNDCLOUD_CALLBACK_URL'),
+    'code_verifier' => env('SOUNDCLOUD_CODE_VERIFIER'),
 ];
