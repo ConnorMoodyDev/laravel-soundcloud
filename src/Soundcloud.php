@@ -376,7 +376,7 @@ class Soundcloud
         return $this->_accessToken;
     }
 
-    public function refreshToken(): string {
+    public function getRefreshToken(): string {
         return $this->_refreshToken;
     }
 
