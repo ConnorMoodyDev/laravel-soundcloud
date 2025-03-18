@@ -275,6 +275,28 @@ class Soundcloud
         $this->_accessToken = $accessToken;
     }
 
+    public function refreshToken(string $refreshToken)
+    {
+            $response = $this->post(
+                $this->buildUrl('oauth/token', [], true),
+                [
+                    'grant_type' => 'refresh_token',
+                    'client_id' => $this->_clientId,
+                    'client_secret' => $this->_clientSecret,
+                    'redirect_uri' => $this->_redirectUri,
+                    'refresh_token' => $refreshToken,
+                ],
+                [],
+                false
+            );
+
+            if($response && $response->access_token) {
+                $this->setAccessToken($response->access_token);
+            }
+
+            return $response;
+    }
+
     public function requestAccessToken()
     {
         if (!$this->_accessToken) {
