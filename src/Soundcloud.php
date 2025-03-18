@@ -275,6 +275,39 @@ class Soundcloud
         $this->_accessToken = $accessToken;
     }
 
+    public function requestAccessToken()
+    {
+        if (!$this->_accessToken) {
+            // Try to auto retrieve the access token with code in instance or in the URL
+            if (!$this->_code) {
+                if (request()->has('code')) {
+                    $this->_code = request()->get('code');
+                } else {
+                    throw new InvalidArgumentException('accessToken must be set or accessible in URL parameters');
+                }
+            }
+
+            $soundCloudResponse = $this->post(
+                $this->buildUrl('oauth/token', [], true),
+                [
+                    'grant_type' => 'authorization_code',
+                    'client_id' => $this->_clientId,
+                    'client_secret' => $this->_clientSecret,
+                    'redirect_uri' => $this->_redirectUri,
+                    'code_verifier' => $this->_codeVerifier,
+                    'code' => $this->_code,
+                ],
+                [],
+                false
+            );
+
+            return $soundCloudResponse;
+        }
+
+        return null;
+    }
+
+
     /**
      * Get Access Token
      * @return string
@@ -308,13 +341,14 @@ class Soundcloud
                 false
             );
 
-            if ($soundCloudResponse && $soundCloudResponse->access_token) {
-                $this->_accessToken = $soundCloudResponse->access_token;
-            }
+            return $soundCloudResponse;
+            // if ($soundCloudResponse && $soundCloudResponse->access_token) {
+            //     $this->_accessToken = $soundCloudResponse->access_token;
+            // }
 
-            if($soundCloudResponse && $soundCloudResponse->refresh_token) {
-                $this->_refreshToken = $soundCloudResponse->refresh_token;
-            }
+            // if($soundCloudResponse && $soundCloudResponse->refresh_token) {
+            //     $this->_refreshToken = $soundCloudResponse->refresh_token;
+            // }
         }
 
         return $this->_accessToken;
