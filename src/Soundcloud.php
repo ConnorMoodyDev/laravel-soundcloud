@@ -53,6 +53,8 @@ class Soundcloud
      */
     private string $_accessToken = '';
 
+    private string $_refreshToken = '';
+
     /**
      * Code verifier
      *
@@ -309,9 +311,17 @@ class Soundcloud
             if ($soundCloudResponse && $soundCloudResponse->access_token) {
                 $this->_accessToken = $soundCloudResponse->access_token;
             }
+
+            if($soundCloudResponse && $soundCloudResponse->refresh_token) {
+                $this->_refreshToken = $soundCloudResponse->refresh_token;
+            }
         }
 
         return $this->_accessToken;
+    }
+
+    public function refreshToken(): string {
+        return $this->_refreshToken;
     }
 
     /**
