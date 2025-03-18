@@ -282,7 +282,7 @@ class Soundcloud
      * @throws RuntimeException
      * @throws \JsonException
      */
-    private function getAccessToken(): string
+    public function getAccessToken(): string
     {
         if (!$this->_accessToken) {
             // Try to auto retrieve the access token with code in instance or in the URL
